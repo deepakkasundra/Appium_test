@@ -12,7 +12,7 @@ platforms:
     deviceName: OnePlus 9
     platformVersion: 11.0
 browserstackLocal: true
-buildName: bstack-demo
+buildName: com.bhive.workspace
 projectName: BrowserStack Sample
 CUSTOM_TAG_1: "You can set a custom Build Tag here"
 # Use CUSTOM_TAG_<N> and set more build tags as you need.
