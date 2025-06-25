@@ -359,19 +359,33 @@ async function scrollMenuBarToStart(maxScrolls = 5) {
         const { x, y } = await scrollView.getLocation();
         const { width, height } = await scrollView.getSize();
         // Swipe left-to-right to go to the start
-        await driver.performActions([{
-            type: 'pointer',
-            id: 'finger1',
-            parameters: { pointerType: 'touch' },
-            actions: [
-                { type: 'pointerMove', duration: 0, x: Math.round(x + width * 0.2), y: Math.round(y + height / 2) },
-                { type: 'pointerDown', button: 0 },
-                { type: 'pause', duration: 300 },
-                { type: 'pointerMove', duration: 500, x: Math.round(x + width * 0.8), y: Math.round(y + height / 2) },
-                { type: 'pointerUp', button: 0 }
-            ]
-        }]);
-        await driver.releaseActions();
+        try {
+            await driver.performActions([{
+                type: 'pointer',
+                id: 'finger1',
+                parameters: { pointerType: 'touch' },
+                actions: [
+                    { type: 'pointerMove', duration: 0, x: Math.round(x + width * 0.2), y: Math.round(y + height / 2) },
+                    { type: 'pointerDown', button: 0 },
+                    { type: 'pause', duration: 300 },
+                    { type: 'pointerMove', duration: 500, x: Math.round(x + width * 0.8), y: Math.round(y + height / 2) },
+                    { type: 'pointerUp', button: 0 }
+                ]
+            }]);
+            try {
+                await driver.releaseActions();
+            } catch (e) {
+                // releaseActions not supported, continue
+            }
+        } catch (e) {
+            // Fallback to touchAction if performActions fails
+            await scrollView.touchAction([
+                'press', { x: Math.round(x + width * 0.2), y: Math.round(y + height / 2) },
+                'wait', 300,
+                'moveTo', { x: Math.round(x + width * 0.8), y: Math.round(y + height / 2) },
+                'release'
+            ]);
+        }
         await driver.pause(500);
     }
 }
