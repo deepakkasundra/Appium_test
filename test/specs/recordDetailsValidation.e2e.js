@@ -32,6 +32,100 @@ function logError(...args) {
     logger.error(args.map(a => (typeof a === 'string' ? a : JSON.stringify(a, null, 2))).join(' '));
 }
 
+// Application launch and setup functions
+async function launchApplication() {
+    try {
+        logInfo('[APP] Launching application...');
+        
+        // Get the platform from environment variable
+        const platform = process.env.PLATFORM || 'android';
+        logInfo(`[APP] Platform: ${platform}`);
+        
+        if (platform === 'android') {
+            // Launch Android app
+            const appPath = path.join(__dirname, '../../app/app.apk');
+            logInfo(`[APP] Android APK path: ${appPath}`);
+            
+            // Check if APK exists
+            const fs = require('fs');
+            if (!fs.existsSync(appPath)) {
+                throw new Error(`APK file not found at: ${appPath}`);
+            }
+            
+            // Launch the app
+            await browser.activateApp('com.bhiveworkspace.app');
+            logInfo('[APP] Android app activated successfully');
+            
+        } else if (platform === 'ios') {
+            // Launch iOS app
+            const appPath = path.join(__dirname, '../../app/app.ipa');
+            logInfo(`[APP] iOS IPA path: ${appPath}`);
+            
+            // Check if IPA exists
+            const fs = require('fs');
+            if (!fs.existsSync(appPath)) {
+                throw new Error(`IPA file not found at: ${appPath}`);
+            }
+            
+            // Launch the app
+            await browser.activateApp('com.bhiveworkspace.app');
+            logInfo('[APP] iOS app activated successfully');
+        }
+        
+        // Wait for app to load
+        await driver.pause(3000);
+        logInfo('[APP] Application launch completed');
+        
+    } catch (error) {
+        logError('[APP] Failed to launch application:', error.message);
+        throw error;
+    }
+}
+
+async function waitForAppToLoad() {
+    try {
+        logInfo('[APP] Waiting for app to fully load...');
+        
+        // Wait for app to be ready
+        await driver.pause(2000);
+        
+        // Check if app is responsive
+        const appState = await browser.getAppState('com.bhiveworkspace.app');
+        logInfo(`[APP] App state: ${appState}`);
+        
+        if (appState !== 'running_in_foreground') {
+            logWarn('[APP] App not in foreground, attempting to activate...');
+            await browser.activateApp('com.bhiveworkspace.app');
+            await driver.pause(2000);
+        }
+        
+        logInfo('[APP] App is ready for testing');
+        
+    } catch (error) {
+        logError('[APP] Error waiting for app to load:', error.message);
+        throw error;
+    }
+}
+
+async function closeApplication() {
+    try {
+        logInfo('[APP] Closing application...');
+        
+        const platform = process.env.PLATFORM || 'android';
+        
+        if (platform === 'android') {
+            await browser.terminateApp('com.bhiveworkspace.app');
+        } else if (platform === 'ios') {
+            await browser.terminateApp('com.bhiveworkspace.app');
+        }
+        
+        logInfo('[APP] Application closed successfully');
+        
+    } catch (error) {
+        logError('[APP] Error closing application:', error.message);
+    }
+}
+
 // Utility: Validate all details for a record element against API data
 async function validateRecordDetailsWithAPI(recordElem, desc, menuName, recordIndex, logInfo, apiCenters) {
     let status = 'PASS';
@@ -449,6 +543,10 @@ describe('Detailed Record Validation (with API verification)', () => {
     let testReporter;
 
     before(async () => {
+        // Launch the application
+        await launchApplication();
+        await waitForAppToLoad();
+        
         // Initialize test reporter
         testReporter = new TestReporter();
         testReporter.startTest();
@@ -480,6 +578,9 @@ describe('Detailed Record Validation (with API verification)', () => {
         testReporter.generateConsoleSummary();
         const reportPaths = testReporter.saveReport('test-reports');
         logInfo(`Test report saved to: ${reportPaths.htmlPath}`);
+        
+        // Close the application
+        await closeApplication();
     });
 
     it('should validate all details for each record in every menu against API', async () => {
@@ -547,6 +648,25 @@ describe('Detailed Record Validation (with API verification)', () => {
 });
 
 describe('Record Details Validation', () => {
+    before(async () => {
+        // Launch the application if not already launched
+        try {
+            const appState = await browser.getAppState('com.bhiveworkspace.app');
+            if (appState !== 'running_in_foreground') {
+                await launchApplication();
+                await waitForAppToLoad();
+            }
+        } catch (error) {
+            await launchApplication();
+            await waitForAppToLoad();
+        }
+    });
+
+    after(async () => {
+        // Close the application
+        await closeApplication();
+    });
+
     it('should extract and validate prices', async () => {
         // 1. Get the XML string from the device
         const xmlString = await browser.getPageSource();
@@ -573,10 +693,29 @@ describe('Record Details Validation', () => {
 });
 
 describe('Debug Test', () => {
-  it('should print debug log', async () => {
-    logInfo('[DEBUG] Test started');
-    // Optionally, try a browser command to ensure session works
-    const title = await browser.getTitle().catch(() => 'no title');
-    logInfo('[DEBUG] Got title:', title);
-  });
+    before(async () => {
+        // Launch the application if not already launched
+        try {
+            const appState = await browser.getAppState('com.bhiveworkspace.app');
+            if (appState !== 'running_in_foreground') {
+                await launchApplication();
+                await waitForAppToLoad();
+            }
+        } catch (error) {
+            await launchApplication();
+            await waitForAppToLoad();
+        }
+    });
+
+    after(async () => {
+        // Close the application
+        await closeApplication();
+    });
+
+    it('should print debug log', async () => {
+        logInfo('[DEBUG] Test started');
+        // Optionally, try a browser command to ensure session works
+        const title = await browser.getTitle().catch(() => 'no title');
+        logInfo('[DEBUG] Got title:', title);
+    });
 }); 
